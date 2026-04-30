@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent System — Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #07080A;
+    --bg-card:   #0E1015;
+    --bg-hover:  #141720;
+    --amber:     #C9933A;
+    --amber-dim: #8A6225;
+    --amber-glow:#C9933A22;
+    --blue:      #4A7EBB;
+    --green:     #3D9E6A;
+    --red:       #B54A4A;
+    --text:      #D8D3C8;
+    --text-dim:  #6E6A62;
+    --text-muted:#3E3B35;
+    --border:    #1C1E24;
+    --border-hi: #2E3240;
+    --mono:      'Courier New', Courier, monospace;
+    --sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --serif:     Georgia, 'Times New Roman', serif;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ────────────────────────────────────── */
+  .shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: 56px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── Topbar ────────────────────────────────────── */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .topbar-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .topbar-brand h1 {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: normal;
+    color: var(--amber);
+    letter-spacing: 0.02em;
+  }
+  .topbar-brand .version {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .dot.idle { background: var(--amber); animation: none; }
+  .dot.err  { background: var(--red);   animation: none; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.35; }
+  }
+  .topbar-time {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Sidebar ───────────────────────────────────── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-section {
+    padding: 14px 20px 6px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 20px;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 12px;
+    transition: background 0.15s, color 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+  .nav-item.active {
+    color: var(--amber);
+    border-left-color: var(--amber);
+    background: var(--amber-glow);
+  }
+  .nav-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    background: var(--bg-hover);
+    color: var(--text-dim);
+    padding: 1px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border-hi);
+  }
+  .nav-badge.live {
+    background: #1A2E1E;
+    color: var(--green);
+    border-color: #2A4A30;
+  }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  /* ── Main ──────────────────────────────────────── */
+  .main {
+    overflow-y: auto;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ── KPI row ───────────────────────────────────── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: var(--amber-dim);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .kpi:hover::before { opacity: 1; }
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-family: var(--mono);
+    font-size: 34px;
+    color: var(--text);
+    line-height: 1;
+    font-weight: normal;
+  }
+  .kpi-value.amber { color: var(--amber); }
+  .kpi-value.green { color: var(--green); }
+  .kpi-delta {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .kpi-delta.up   { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+
+  /* ── Two-col grid ──────────────────────────────── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 14px;
+  }
+
+  /* ── Card ──────────────────────────────────────── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-title {
+    font-family: var(--serif);
+    font-size: 13px;
+    font-weight: normal;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .card-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .card-body { padding: 16px 20px; }
+
+  /* ── Log ───────────────────────────────────────── */
+  .log {
+    font-family: var(--mono);
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .log-line {
+    display: grid;
+    grid-template-columns: 72px 52px 1fr;
+    gap: 12px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: baseline;
+  }
+  .log-line:last-child { border-bottom: none; }
+  .log-ts   { color: var(--text-muted); }
+  .log-tag  {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-align: center;
+  }
+  .log-tag.plan { background: #1A2030; color: var(--blue); border: 1px solid #253050; }
+  .log-tag.exec { background: #1E1A10; color: var(--amber); border: 1px solid #3A3010; }
+  .log-tag.done { background: #121E15; color: var(--green); border: 1px solid #1E3525; }
+  .log-tag.err  { background: #1E1212; color: var(--red);   border: 1px solid #3A1E1E; }
+  .log-msg  { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log-msg em { color: var(--text); font-style: normal; }
+
+  /* ── Tool grid ─────────────────────────────────── */
+  .tool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .tool-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tool-row:last-child { border-bottom: none; }
+  .tool-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+  .tool-info {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .tool-stat {
+    text-align: right;
+  }
+  .tool-calls {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--text);
+  }
+  .tool-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  /* ── Memory bars ───────────────────────────────── */
+  .mem-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .mem-row:last-child { border-bottom: none; }
+  .mem-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .mem-bar-wrap {
+    flex: 1;
+    height: 4px;
+    background: var(--border-hi);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .mem-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--amber-dim);
+    transition: width 0.6s ease;
+  }
+  .mem-bar.blue { background: var(--blue); }
+  .mem-bar.green { background: var(--green); }
+  .mem-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    width: 60px;
+    text-align: right;
+  }
+
+  /* ── Sparkline ─────────────────────────────────── */
+  .sparkline svg { display: block; }
+
+  /* ── Section header ─────────────────────────────── */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .section-head h2 {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: normal;
+    color: var(--text);
+  }
+  .section-head span {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Action bar ────────────────────────────────── */
+  .action-bar {
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    border: 1px solid var(--border-hi);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 3px;
+  }
+  .btn:hover { border-color: var(--amber-dim); color: var(--amber); background: var(--amber-glow); }
+  .btn.primary {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+    background: var(--amber-glow);
+  }
+  .btn.primary:hover { background: #C9933A33; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <h1>AI Agent System</h1>
+      <span class="version">v0.1.0</span>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="dot"></div>API ONLINE</div>
+      <div class="status-pill"><div class="dot idle"></div>AGENT IDLE</div>
+      <div class="topbar-time" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-section">Monitor</div>
+    <div class="nav-item active">Overview <span class="nav-badge live">live</span></div>
+    <div class="nav-item">Executions <span class="nav-badge">12</span></div>
+    <div class="nav-item">Memory <span class="nav-badge">247</span></div>
+
+    <div class="nav-section">System</div>
+    <div class="nav-item">Tools <span class="nav-badge">4</span></div>
+    <div class="nav-item">Providers <span class="nav-badge">3</span></div>
+    <div class="nav-item">Config</div>
+
+    <div class="nav-section">Dev</div>
+    <div class="nav-item">API Docs</div>
+    <div class="nav-item">Logs</div>
+
+    <div class="sidebar-footer">
+      ENV: development<br>
+      HOST: 0.0.0.0:8000<br>
+      LLM: claude-sonnet-4-6<br>
+      DB: chromadb · sqlite
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- KPI -->
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Runs today</div>
+        <div class="kpi-value amber" id="kpi-runs">12</div>
+        <div class="kpi-delta up">+4 vs yesterday</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg steps/run</div>
+        <div class="kpi-value" id="kpi-steps">3.4</div>
+        <div class="kpi-delta">max 20 allowed</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Success rate</div>
+        <div class="kpi-value green" id="kpi-success">91%</div>
+        <div class="kpi-delta up">+6pp vs last week</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Memory entries</div>
+        <div class="kpi-value" id="kpi-mem">247</div>
+        <div class="kpi-delta">short + long + vector</div>
+      </div>
+    </div>
+
+    <!-- Section header -->
+    <div class="section-head">
+      <h2>Execution log</h2>
+      <span>LAST 10 RUNS</span>
+      <div style="margin-left:auto" class="action-bar">
+        <button class="btn" onclick="clearLog()">Clear</button>
+        <button class="btn primary" onclick="simulateRun()">▶ Run agent</button>
+      </div>
+    </div>
+
+    <!-- Two-col -->
+    <div class="grid-2">
+
+      <!-- Log card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Agent runs</span>
+          <span class="card-meta" id="log-count">10 entries</span>
+        </div>
+        <div class="card-body">
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+
+      <!-- Right col -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
+
+        <!-- Tools -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Tool registry</span>
+            <span class="card-meta">4 registered</span>
+          </div>
+          <div class="card-body">
+            <div class="tool-list">
+              <div class="tool-row">
+                <div>
+                  <div class="tool-name">web_search</div>
+                  <div class="tool-info">DuckDuckGo · httpx</div>
+                </div>
+                <div class="tool-stat">
+                  <div class="tool-calls" id="t-search">38</div>
+                  <div class="tool-label">calls</div>
+                </div>
+              </div>
+              <div class="tool-row">
+                <div>
+                  <div class="tool-name">calculator</div>
+                  <div class="tool-info">eval sandbox</div>
+                </div>
+                <div class="tool-stat">
+                  <div class="tool-calls" id="t-calc">14</div>
+                  <div class="tool-label">calls</div>
+                </div>
+              </div>
+              <div class="tool-row">
+                <div>
+                  <div class="tool-name">file_handler</div>
+                  <div class="tool-info">read / write</div>
+                </div>
+                <div class="tool-stat">
+                  <div class="tool-calls" id="t-file">9</div>
+                  <div class="tool-label">calls</div>
+                </div>
+              </div>
+              <div class="tool-row">
+                <div>
+                  <div class="tool-name">database</div>
+                  <div class="tool-info">SQLAlchemy · sqlite</div>
+                </div>
+                <div class="tool-stat">
+                  <div class="tool-calls" id="t-db">3</div>
+                  <div class="tool-label">calls</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Memory -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Memory layers</span>
+            <span class="card-meta">247 total</span>
+          </div>
+          <div class="card-body">
+            <div class="mem-row">
+              <div class="mem-label">short-term</div>
+              <div class="mem-bar-wrap"><div class="mem-bar" style="width:32%"></div></div>
+              <div class="mem-val">16 / 50</div>
+            </div>
+            <div class="mem-row">
+              <div class="mem-label">long-term</div>
+              <div class="mem-bar-wrap"><div class="mem-bar blue" style="width:18%"></div></div>
+              <div class="mem-val">81 items</div>
+            </div>
+            <div class="mem-row">
+              <div class="mem-label">vector</div>
+              <div class="mem-bar-wrap"><div class="mem-bar green" style="width:55%"></div></div>
+              <div class="mem-val">150 docs</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Clock
+  function tick() {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toLocaleTimeString('de-DE', {hour12: false});
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // Log data
+  const runs = [
+    {ts:'09:41:02', tag:'done', msg:'<em>Search</em> "latest LLM benchmarks" → 5 results, summary written'},
+    {ts:'09:38:15', tag:'done', msg:'<em>Calculate</em> token cost for 12k prompt → $0.038'},
+    {ts:'09:34:50', tag:'exec', msg:'<em>File</em> write storage/memory/long_term.json → 81 keys'},
+    {ts:'09:31:22', tag:'done', msg:'<em>Search</em> "FastAPI async patterns" → 3 docs fetched'},
+    {ts:'09:28:07', tag:'err',  msg:'<em>Database</em> query failed — no engine configured'},
+    {ts:'09:24:33', tag:'plan', msg:'Planning: "research chromadb indexing strategies" → 4 steps'},
+    {ts:'09:21:11', tag:'done', msg:'<em>Search</em> "chromadb persistent client" → embedded, chunked'},
+    {ts:'09:17:44', tag:'exec', msg:'<em>Calculator</em> "2048 * 4096 / 1000" → 8388.6'},
+    {ts:'09:14:20', tag:'plan', msg:'Planning: "summarize agent architecture" → 3 steps'},
+    {ts:'09:10:05', tag:'done', msg:'<em>File</em> read agent/core/agent.py → 52 lines parsed'},
+  ];
+
+  function renderLog() {
+    const el = document.getElementById('log');
+    el.innerHTML = runs.map(r => `
+      <div class="log-line">
+        <span class="log-ts">${r.ts}</span>
+        <span class="log-tag ${r.tag}">${r.tag.toUpperCase()}</span>
+        <span class="log-msg">${r.msg}</span>
+      </div>`).join('');
+    document.getElementById('log-count').textContent = runs.length + ' entries';
+  }
+  renderLog();
+
+  // Simulate run
+  const tasks = [
+    {tag:'plan', msg:'Planning: "<em>user task</em>" → generating steps'},
+    {tag:'exec', msg:'<em>web_search</em> executing with query…'},
+    {tag:'exec', msg:'<em>calculator</em> evaluating expression…'},
+    {tag:'done', msg:'Run complete — 2 steps, no errors'},
+  ];
+  let simStep = 0;
+
+  function simulateRun() {
+    const toolNames = ['t-search','t-calc','t-file','t-db'];
+    const pick = toolNames[Math.floor(Math.random()*toolNames.length)];
+    const el = document.getElementById(pick);
+    el.textContent = parseInt(el.textContent) + 1;
+
+    const now = new Date();
+    const ts = now.toLocaleTimeString('de-DE', {hour12: false});
+    const task = tasks[simStep % tasks.length];
+    simStep++;
+
+    runs.unshift({ts, tag: task.tag, msg: task.msg});
+    if (runs.length > 20) runs.pop();
+    renderLog();
+
+    if (task.tag === 'done') {
+      const kpi = document.getElementById('kpi-runs');
+      kpi.textContent = parseInt(kpi.textContent) + 1;
+    }
+  }
+
+  function clearLog() {
+    runs.length = 0;
+    renderLog();
+  }
+
+  // Animate bars on load
+  setTimeout(() => {
+    document.querySelectorAll('.mem-bar').forEach(b => {
+      const w = b.style.width;
+      b.style.width = '0';
+      requestAnimationFrame(() => { b.style.width = w; });
+    });
+  }, 100);
+</script>
+
+</body>
+</html>

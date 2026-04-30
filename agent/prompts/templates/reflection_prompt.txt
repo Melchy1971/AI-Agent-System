@@ -1,0 +1,7 @@
+Task: {task}
+
+Steps executed:
+{steps}
+
+Is the task complete? If not, what must still be done?
+Answer with: COMPLETE or CONTINUE: <next action>

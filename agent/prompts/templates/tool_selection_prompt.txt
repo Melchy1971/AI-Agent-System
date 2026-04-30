@@ -1,0 +1,7 @@
+Available tools:
+{tools}
+
+Current step: {step}
+
+Reply with valid JSON only:
+{{"tool": "<name>", "args": {{...}}}}

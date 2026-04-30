@@ -1,0 +1,6 @@
+Task: {task}
+
+Context:
+{context}
+
+Produce a numbered plan. Each step must map to exactly one tool call.

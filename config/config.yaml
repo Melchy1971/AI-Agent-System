@@ -1,0 +1,22 @@
+agent:
+  max_steps: 20
+  reflection: true
+
+llm:
+  default_provider: anthropic
+  model: claude-sonnet-4-6
+  max_tokens: 4096
+
+tools:
+  enabled:
+    - web_search
+    - calculator
+    - file_handler
+
+memory:
+  short_term_maxlen: 50
+  vector_top_k: 5
+
+api:
+  cors_origins:
+    - "http://localhost:3000"
